@@ -125,7 +125,7 @@ class TestDownloadPlanning(unittest.TestCase):
             '--exclude="*" -a /s3/bucket/path/ /tmp/mcap/job-42_artifacts',
         )
 
-    def test_plan_snipping__given_repeated_multi_mcap_intervals__expect_one_merge(self):
+    def test_plan_snipping__given_repeated_multi_mcap_intervals__expect_separate_snips(self):
         markers = [
             {
                 "windowStart": "2026-09-18T20:56:40+02:00",
@@ -148,10 +148,14 @@ class TestDownloadPlanning(unittest.TestCase):
         result = plan_job_snipping_operations("job-42", markers, "/tmp/job-42")
 
         self.assertEqual(len(result["mergeOperations"]), 1)
-        self.assertEqual(len(result["snipOperations"]), 1)
-        self.assertEqual(len(result["commands"]), 2)
+        self.assertEqual(len(result["snipOperations"]), 2)
+        self.assertNotEqual(
+            result["snipOperations"][0]["outputFilename"],
+            result["snipOperations"][1]["outputFilename"],
+        )
+        self.assertEqual(len(result["commands"]), 3)
 
-    def test_process_job__given_overlapping_windows__expect_one_unified_operation(self):
+    def test_process_job__given_markers_two_seconds_apart__expect_separate_operations(self):
         first_mcap = "2026-09-18_20-56-30_2026-09-18_20-56-45_first.mcap"
         second_mcap = "2026-09-18_20-56-45_2026-09-18_20-57-10_second.mcap"
         job = {
@@ -165,7 +169,7 @@ class TestDownloadPlanning(unittest.TestCase):
                 },
                 {
                     "evaluator": "target",
-                    "loggerTime": "2026-09-18T20:56:55+02:00",
+                    "loggerTime": "2026-09-18T20:56:42+02:00",
                 },
             ],
         }
@@ -180,18 +184,26 @@ class TestDownloadPlanning(unittest.TestCase):
         self.assertEqual(result["matchedMcapFiles"], [first_mcap, second_mcap])
         self.assertEqual(result["markers"][0]["mcapFiles"], [first_mcap, second_mcap])
         self.assertEqual(result["markers"][1]["mcapFiles"], [first_mcap, second_mcap])
-        self.assertEqual(len(result["snippingPlan"]["snipOperations"]), 1)
+        self.assertEqual(len(result["snippingPlan"]["snipOperations"]), 2)
         self.assertEqual(
             result["snippingPlan"]["snipOperations"][0]["windowStart"],
             "2026-09-18T20:56:30+02:00",
         )
         self.assertEqual(
             result["snippingPlan"]["snipOperations"][0]["windowEnd"],
-            "2026-09-18T20:57:05+02:00",
+            "2026-09-18T20:56:50+02:00",
         )
         self.assertEqual(
-            result["snippingPlan"]["snipOperations"][0]["durationSeconds"],
-            35.0,
+            result["snippingPlan"]["snipOperations"][1]["windowStart"],
+            "2026-09-18T20:56:32+02:00",
+        )
+        self.assertEqual(
+            result["snippingPlan"]["snipOperations"][1]["windowEnd"],
+            "2026-09-18T20:56:52+02:00",
+        )
+        self.assertEqual(
+            [operation["durationSeconds"] for operation in result["snippingPlan"]["snipOperations"]],
+            [20.0, 20.0],
         )
 
     def test_process_job__given_separated_windows__expect_separate_operations(self):

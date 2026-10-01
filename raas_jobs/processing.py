@@ -55,25 +55,7 @@ def plan_job_snipping_operations(
         )
 
     interval_operations.sort(key=lambda operation: operation["start"])
-    coalesced_operations: List[Dict[str, Any]] = []
     for operation in interval_operations:
-        if (
-            coalesced_operations
-            and operation["start"] <= coalesced_operations[-1]["end"]
-        ):
-            current = coalesced_operations[-1]
-            current["end"] = max(current["end"], operation["end"])
-            current["mcapFiles"].update(operation["mcapFiles"])
-        else:
-            coalesced_operations.append(
-                {
-                    "start": operation["start"],
-                    "end": operation["end"],
-                    "mcapFiles": set(operation["mcapFiles"]),
-                }
-            )
-
-    for operation in coalesced_operations:
         mcap_basenames = sorted(
             os.path.basename(path.strip()) for path in operation["mcapFiles"]
         )
@@ -142,8 +124,8 @@ def process_job_markers(
     job_id = job.get("id") or "unknown_job"
 
     matching_markers = []
-    marker_windows: List[Tuple[int, datetime, datetime]] = []
     converted_log_times = []
+    matched_mcaps_set: Set[str] = set()
     window_delta = timedelta(seconds=threshold_seconds)
 
     for marker in raw_markers:
@@ -160,6 +142,13 @@ def process_job_markers(
             converted_log_times.append(converted_dt)
             window_start = converted_dt - window_delta
             window_end = converted_dt + window_delta
+            matching_mcaps = find_mcaps_for_interval(
+                start_dt=window_start,
+                end_dt=window_end,
+                mcap_files=all_job_mcap_files,
+                tz=tz,
+            )
+            matched_mcaps_set.update(matching_mcaps)
 
         matching_markers.append(
             {
@@ -171,39 +160,6 @@ def process_job_markers(
                 "mcapFiles": matching_mcaps,
             }
         )
-        if window_start is not None and window_end is not None:
-            marker_windows.append(
-                (len(matching_markers) - 1, window_start, window_end)
-            )
-
-    coalesced_windows = coalesce_intervals(
-        [(window_start, window_end) for _, window_start, window_end in marker_windows]
-    )
-    matched_mcaps_set: Set[str] = set()
-    coalesced_markers: List[Dict[str, Any]] = []
-    mcaps_by_interval: List[Tuple[datetime, datetime, List[str]]] = []
-    for window_start, window_end in coalesced_windows:
-        matching_mcaps = find_mcaps_for_interval(
-            start_dt=window_start,
-            end_dt=window_end,
-            mcap_files=all_job_mcap_files,
-            tz=tz,
-        )
-        matched_mcaps_set.update(matching_mcaps)
-        mcaps_by_interval.append((window_start, window_end, matching_mcaps))
-        coalesced_markers.append(
-            {
-                "windowStart": window_start.isoformat(),
-                "windowEnd": window_end.isoformat(),
-                "mcapFiles": matching_mcaps,
-            }
-        )
-
-    for marker_index, marker_start, marker_end in marker_windows:
-        for interval_start, interval_end, matching_mcaps in mcaps_by_interval:
-            if interval_start <= marker_start and marker_end <= interval_end:
-                matching_markers[marker_index]["mcapFiles"] = matching_mcaps
-                break
 
     matched_mcaps_list = sorted(matched_mcaps_set)
     mcap_files_to_download = all_job_mcap_files if download_all_mcaps else matched_mcaps_list
@@ -219,7 +175,7 @@ def process_job_markers(
         destination_dir = os.path.expanduser(destination_dir)
     snipping_plan = plan_job_snipping_operations(
         job_id=job_id,
-        markers=coalesced_markers,
+        markers=matching_markers,
         dest_dir=destination_dir,
         threshold_seconds=threshold_seconds,
     )
