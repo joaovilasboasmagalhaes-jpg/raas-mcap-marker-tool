@@ -12,17 +12,17 @@ Run the tool from the repository root:
 
 ```bash
 python3 query_jobs.py \
-  --software-version ad_make_release_2610_ef_066_048_000_manual_73275_20260921T084707 \
+  --start-time 2026-09-01T00:00:00Z \
   --evaluator ltmb_map_invalidation_obstacles_in_corridor
 ```
 
-The command queries successful `pbs` RaaS jobs, finds markers for the evaluator, and creates `download_mcaps.sh`.
+The command queries successful `pbs` RaaS jobs triggered between `--start-time` and `--end-time` (default: now), finds markers for the evaluator, and creates `download_mcaps.sh`. If `--start-time` is omitted, it defaults to 24 hours before now.
 
 Execute the generated download, merge, and snipping pipeline with:
 
 ```bash
 python3 query_jobs.py \
-  --software-version ad_make_release_2610_ef_066_048_000_manual_73275_20260921T084707 \
+  --start-time 2026-09-01T00:00:00Z \
   --evaluator ltmb_map_invalidation_obstacles_in_corridor \
   --execute
 ```
@@ -49,7 +49,9 @@ The tool does not download files directly through an S3 SDK. The generated scrip
 
 | Option | Short form | Default | Purpose |
 | --- | --- | --- | --- |
-| `--software-version` | `-s` | The value in the CLI help | RaaS software or AdMake version to query. |
+| `--start-time` | `-S` | 24 hours before now | ISO 8601 start of the `triggeredDatetime` window to query. |
+| `--end-time` | `-E` | Now | ISO 8601 end of the `triggeredDatetime` window to query. |
+| `--software-version` | `-s` | None (all versions) | RaaS software or AdMake version to query. |
 | `--evaluator` | `-e` | The value in the CLI help | Marker evaluator to keep. |
 | `--playback-mode` | `-p` | `pbs` | Playback mode filter. |
 | `--job-state` | `-j` | `SUCCESSFUL` | Job state filter. |
@@ -64,7 +66,7 @@ For example, use a five-second context window and a separate script name:
 
 ```bash
 python3 query_jobs.py \
-  -s software_version \
+  -S 2026-09-01T00:00:00Z \
   -e evaluator_name \
   --threshold 5 \
   --script-name download_obstacle_markers.sh
@@ -72,7 +74,7 @@ python3 query_jobs.py \
 
 ## How It Works
 
-1. The GraphQL API is queried for jobs matching the software version, evaluator, playback mode, and job state.
+1. The GraphQL API is queried for jobs matching the triggered-datetime window, evaluator, playback mode, job state, and optional software version.
 2. Markers are filtered to the requested evaluator.
 3. Each marker timestamp is converted to the configured timezone, which defaults to UTC+2.
 4. A context interval is created around each marker:
@@ -120,8 +122,9 @@ The original `query_jobs.py` module remains a compatibility facade. The implemen
 from raas_jobs import process_job_markers, query_raas_jobs
 
 jobs = query_raas_jobs(
-    software_version="software_version",
     evaluator="evaluator_name",
+    start_triggered_datetime="2026-09-01T00:00:00Z",
+    end_triggered_datetime="2026-09-24T23:59:59Z",
 )
 processed_job = process_job_markers(
     job=jobs[0],

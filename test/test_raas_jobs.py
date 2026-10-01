@@ -92,6 +92,35 @@ class TestGraphqlApi(unittest.TestCase):
             timeout=43,
         )
 
+    @patch("raas_jobs.graphql_api.requests.post")
+    def test_query_raas_jobs__given_time_window__expect_triggered_datetime_variables(self, post):
+        response = Mock()
+        response.json.return_value = {"data": {"raasJobs": []}}
+        post.return_value = response
+
+        query_raas_jobs(
+            evaluator="evaluator-42",
+            playback_mode=None,
+            job_state=None,
+            start_triggered_datetime="2026-09-01T00:00:00Z",
+            end_triggered_datetime="2026-09-24T23:59:59Z",
+            endpoint_url="https://example.invalid/graphql",
+        )
+
+        post.assert_called_once_with(
+            url="https://example.invalid/graphql",
+            json={
+                "query": QUERY_RAAS_JOBS,
+                "variables": {
+                    "markersEvaluator": ["evaluator-42"],
+                    "startTriggeredDatetime": "2026-09-01T00:00:00Z",
+                    "endTriggeredDatetime": "2026-09-24T23:59:59Z",
+                },
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=60,
+        )
+
 
 class TestDownloadPlanning(unittest.TestCase):
     def test_coalesce_intervals__given_touching_windows__expect_one_interval(self):

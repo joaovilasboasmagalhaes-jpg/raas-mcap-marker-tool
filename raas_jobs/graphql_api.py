@@ -13,12 +13,16 @@ query GetJobsWithMcap(
   $markersEvaluator: [String!]
   $playbackMode: String
   $jobState: String
+  $startTriggeredDatetime: String
+  $endTriggeredDatetime: String
 ) {
   raasJobs(
     softwareVersion: $softwareVersion
     markersEvaluator: $markersEvaluator
     playbackMode: $playbackMode
     jobState: $jobState
+    startTriggeredDatetime: $startTriggeredDatetime
+    endTriggeredDatetime: $endTriggeredDatetime
   ) {
     id
     outputMcapFiles
@@ -33,26 +37,33 @@ query GetJobsWithMcap(
 
 
 def query_raas_jobs(
-    software_version: Union[str, List[str]],
     evaluator: Union[str, List[str]],
+    software_version: Optional[Union[str, List[str]]] = None,
     playback_mode: Optional[str] = "pbs",
     job_state: Optional[str] = "SUCCESSFUL",
+    start_triggered_datetime: Optional[str] = None,
+    end_triggered_datetime: Optional[str] = None,
     endpoint_url: str = GRAPHQL_ENDPOINT,
     timeout: int = 60,
     headers: Optional[Dict[str, str]] = None,
 ) -> List[Dict[str, Any]]:
     """Query the Marker Insight GraphQL v2 API for RaaS jobs."""
-    software_versions = [software_version] if isinstance(software_version, str) else software_version
     evaluators = [evaluator] if isinstance(evaluator, str) else evaluator
 
     variables: Dict[str, Any] = {
-        "softwareVersion": software_versions,
         "markersEvaluator": evaluators,
     }
+    if software_version is not None:
+        software_versions = [software_version] if isinstance(software_version, str) else software_version
+        variables["softwareVersion"] = software_versions
     if playback_mode is not None:
         variables["playbackMode"] = playback_mode
     if job_state is not None:
         variables["jobState"] = job_state
+    if start_triggered_datetime is not None:
+        variables["startTriggeredDatetime"] = start_triggered_datetime
+    if end_triggered_datetime is not None:
+        variables["endTriggeredDatetime"] = end_triggered_datetime
 
     request_headers = {"Content-Type": "application/json"}
     if headers:

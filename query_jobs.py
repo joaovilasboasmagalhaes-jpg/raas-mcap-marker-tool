@@ -75,13 +75,26 @@ def __getattr__(name: str):
 def build_argument_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
     parser = argparse.ArgumentParser(
-        description="Query Marker Insight GraphQL v2 for RaaS jobs matching software version and evaluator."
+        description="Query Marker Insight GraphQL v2 for RaaS jobs matching a triggered-datetime window and evaluator."
+    )
+    parser.add_argument(
+        "--start-time",
+        "-S",
+        default=None,
+        help="ISO 8601 start of the triggered-datetime window, e.g. 2026-09-01T00:00:00Z "
+        "(default: 24 hours before now)",
+    )
+    parser.add_argument(
+        "--end-time",
+        "-E",
+        default=None,
+        help="ISO 8601 end of the triggered-datetime window (default: now)",
     )
     parser.add_argument(
         "--software-version",
         "-s",
-        default="ad_make_release_2610_ef_066_048_000_manual_73275_20260921T084707",
-        help="Software version (default: ad_make_release_2610_ef_066_048_000_manual_73275_20260921T084707)",
+        default=None,
+        help="Software version filter (default: none, all versions in the time window)",
     )
     parser.add_argument(
         "--evaluator",
@@ -158,15 +171,21 @@ def main() -> int:
     resolved_log_file_path = configure_log_file(log_file_path)
     log_info(f"Logging to file: {resolved_log_file_path}")
 
+    now = datetime.datetime.now(datetime.timezone.utc)
+    end_time = args.end_time or now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    start_time = args.start_time or (now - datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     log_info(
-        f"Querying jobs for software_version='{args.software_version}', "
+        f"Querying jobs for start_time='{start_time}', end_time='{end_time}', "
         f"evaluator='{args.evaluator}'..."
     )
     jobs = query_raas_jobs(
-        software_version=args.software_version,
         evaluator=args.evaluator,
+        software_version=args.software_version,
         playback_mode=args.playback_mode,
         job_state=args.job_state,
+        start_triggered_datetime=start_time,
+        end_triggered_datetime=end_time,
     )
 
     log_info(f"Retrieved {len(jobs)} jobs. Processing markers and download commands...")
