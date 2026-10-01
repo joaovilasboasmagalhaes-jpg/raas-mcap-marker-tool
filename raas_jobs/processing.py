@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from .downloads import build_mcap_download_command
+from .logging_utils import log_info, log_warning
 from .mcap import extract_mcap_file_list, find_mcaps_for_interval
 from .timestamps import UTC_PLUS_2, convert_timestamp_to_utc
 
@@ -161,6 +162,18 @@ def process_job_markers(
             }
         )
 
+        if converted_dt is not None:
+            log_info(
+                f"Job {job_id}: marker evaluator='{marker.get('evaluator')}' "
+                f"loggerTime={raw_log_time} -> {converted_dt.isoformat()}, "
+                f"window=[{window_start.isoformat()}, {window_end.isoformat()}], "
+                f"matched {len(matching_mcaps)} mcap file(s)"
+            )
+        else:
+            log_warning(
+                f"Job {job_id}: marker evaluator='{marker.get('evaluator')}' has no loggerTime"
+            )
+
     matched_mcaps_list = sorted(matched_mcaps_set)
     mcap_files_to_download = all_job_mcap_files if download_all_mcaps else matched_mcaps_list
     download_command = build_mcap_download_command(
@@ -178,6 +191,11 @@ def process_job_markers(
         markers=matching_markers,
         dest_dir=destination_dir,
         threshold_seconds=threshold_seconds,
+    )
+
+    log_info(
+        f"Job {job_id}: {len(matching_markers)} matching marker(s), "
+        f"{len(matched_mcaps_list)} matched mcap file(s)"
     )
 
     return {

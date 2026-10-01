@@ -5,7 +5,7 @@ import subprocess
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .logging_utils import log_error, log_info
+from .logging_utils import log_error, log_info, write_raw
 
 
 def generate_download_script(
@@ -165,9 +165,19 @@ def generate_download_script(
 def execute_download_script(script_path: str) -> int:
     """Execute a generated download script and return its exit code."""
     log_info(f"Executing download script: {script_path}")
-    result = subprocess.run(["bash", script_path], check=False)
-    if result.returncode == 0:
+    process = subprocess.Popen(
+        ["bash", script_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    assert process.stdout is not None
+    for line in process.stdout:
+        write_raw(line)
+    returncode = process.wait()
+    if returncode == 0:
         log_info("Downloads and snipping finished successfully.")
     else:
-        log_error(f"Download script failed with exit code {result.returncode}.")
-    return result.returncode
+        log_error(f"Download script failed with exit code {returncode}.")
+    return returncode

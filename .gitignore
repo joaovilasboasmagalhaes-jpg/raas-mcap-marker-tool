@@ -1,4 +1,6 @@
 __pycache__/
 *.py[cod]
 .venv
+.vscode
 download_mcaps.sh
+logs/

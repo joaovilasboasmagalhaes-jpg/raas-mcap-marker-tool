@@ -1,7 +1,9 @@
 """CLI and backward-compatible imports for the RaaS job utility."""
 
 import argparse
+import datetime
 import json
+import os
 
 from raas_jobs import (
     GRAPHQL_ENDPOINT,
@@ -11,6 +13,8 @@ from raas_jobs import (
     UTC_PLUS_2,
     LogLevel,
     build_mcap_download_command,
+    close_log_file,
+    configure_log_file,
     convert_timestamp_to_utc,
     execute_download_script,
     extract_mcap_file_list,
@@ -40,6 +44,8 @@ __all__ = [
     "UTC_PLUS_2",
     "LogLevel",
     "build_mcap_download_command",
+    "close_log_file",
+    "configure_log_file",
     "convert_timestamp_to_utc",
     "execute_download_script",
     "extract_mcap_file_list",
@@ -132,6 +138,12 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default="INFO",
         help="Logging level threshold (default: INFO)",
     )
+    parser.add_argument(
+        "--log-file",
+        default=None,
+        help="Path to a file where all logged output is also recorded "
+        "(default: logs/raas_jobs_<timestamp>.log)",
+    )
     return parser
 
 
@@ -139,6 +151,12 @@ def main() -> int:
     """Query jobs, prepare MCAP operations, and optionally execute them."""
     args = build_argument_parser().parse_args()
     set_log_level(args.log_level)
+
+    log_file_path = args.log_file or os.path.join(
+        "logs", f"raas_jobs_{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}.log"
+    )
+    resolved_log_file_path = configure_log_file(log_file_path)
+    log_info(f"Logging to file: {resolved_log_file_path}")
 
     log_info(
         f"Querying jobs for software_version='{args.software_version}', "
@@ -168,7 +186,7 @@ def main() -> int:
 
     log_debug("Processed jobs payload:")
     if logging_utils.CURRENT_LOG_LEVEL.value <= LogLevel.DEBUG.value:
-        print(json.dumps(processed_jobs, indent=2))
+        log_debug(json.dumps(processed_jobs, indent=2))
 
     if args.execute:
         return execute_download_script(script_path)
@@ -176,4 +194,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        exit_code = main()
+    finally:
+        close_log_file()
+    raise SystemExit(exit_code)

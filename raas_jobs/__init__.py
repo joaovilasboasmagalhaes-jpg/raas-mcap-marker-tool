@@ -4,6 +4,8 @@ from .downloads import build_mcap_download_command
 from .graphql_api import GRAPHQL_ENDPOINT, QUERY_RAAS_JOBS, query_raas_jobs
 from .logging_utils import (
     LogLevel,
+    close_log_file,
+    configure_log_file,
     log_debug,
     log_error,
     log_info,
@@ -36,7 +38,9 @@ __all__ = [
     "UTC_PLUS_2",
     "LogLevel",
     "build_mcap_download_command",
+    "close_log_file",
     "coalesce_intervals",
+    "configure_log_file",
     "convert_timestamp_to_utc",
     "execute_download_script",
     "extract_mcap_file_list",
