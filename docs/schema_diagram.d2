@@ -1,0 +1,206 @@
+direction: right
+
+# -------------------------------------------------------------
+# GraphQL Object Types
+# -------------------------------------------------------------
+Session: {
+  shape: class
+  id: String!
+  timezoneOffset: Duration
+  loggerStartTimestamp: BigInt!
+  loggerEndTimestamp: BigInt!
+  vin: String!
+  analyses: "[Analysis!]!"
+}
+
+SessionInterval: {
+  shape: class
+  id: String!
+  session: Session!
+  intervalStartTimestamp: BigInt!
+  intervalEndTimestamp: BigInt!
+  analyses: "[Analysis!]!"
+}
+
+RaasJob: {
+  shape: class
+  id: String!
+  jobState: String!
+  contextId: String!
+  sessionInterval: SessionInterval!
+  rpus: JSON!
+  jobOutputPath: String!
+  rpuFailures: "[RpuFailure!]!"
+  relatedAnalyses: "[RelatedAnalysis!]!"
+  analyses: "[Analysis!]!"
+  scenario: String!
+  raasTags: JSON!
+  branch: String!
+  testSet: String!
+  intervals: String!
+  intervalSetId: String!
+  intervalSetName: String!
+  triggeredDatetime: Datetime!
+  playbackMode: String!
+  taskState: String!
+  outputMcapFiles: JSON!
+  variant: String!
+  softwareVersion: String!
+  sessionStartBdc: Float
+  sessionEndBdc: Float
+  drivenDistance: Float
+  drivenTime: Float
+  drivenDistanceHoo: Float
+  drivenTimeHoo: Float
+  drivenDistanceLsa: Float
+  drivenTimeLsa: Float
+  drivenDistanceChangeLaneAvailable: Float
+  drivenTimeChangeLaneAvailable: Float
+  drivenDistanceXcc: Float
+  drivenTimeXcc: Float
+  drivenDistanceShadowMode: Float
+  drivenTimeShadowMode: Float
+  drivenDistanceOnMotorway: Float
+  drivenTimeOnMotorway: Float
+  mapRegion: String!
+  mapVersion: Int
+  mapPath: String
+  argoWorkflowNameReference: String!
+  retriggeredJobs: JSON!
+  reachedEvaluatorLimits: JSON!
+  sensorReproVersion: String!
+  trigger: String!
+  parameterSet: String!
+  rpuConfigId: String!
+  rpuConfigChanges: JSON!
+  rpuType: String!
+  exitCode: Int!
+  outputBucket: String!
+  inputJson: JSON!
+  executionArguments: JSON!
+  realTimeFactor: Float
+  rpuId: String!
+  rpuBuildTime: Datetime!
+  rpuBaseBranch: String!
+  rpuBoardnetVersion: String!
+  rpuPdxVersion: String!
+  rpuCommitHashDdad: String!
+  rpuCommitHashOrion: String!
+  rpuMlPlannerEmilnetModelVersion: String!
+  rpuMlPlannerQuadModelVersion: String!
+  rpuTypeLlp: String!
+  taskStateLlp: String!
+  exitCodeLlp: Int!
+  outputBucketLlp: String!
+  inputJsonLlp: JSON!
+  variantLlp: String!
+  softwareVersionLlp: String!
+  executionArgumentsLlp: JSON!
+  realTimeFactorLlp: Float
+  rpuBuildTimeLlp: Datetime!
+  rpuBaseBranchLlp: String!
+  rpuPdxVersionLlp: String!
+  rpuCommitHashDdadLlp: String!
+  rpuCommitHashOrionLlp: String!
+  runningEvaluators: JSON!
+  runningEvaluatorsLlp: JSON!
+  createdDatetime: Datetime!
+  modifiedDatetime: Datetime!
+  rpHash: String!
+  rpHashLlp: String!
+  reprocessingQualityCheckState: String!
+  coredumps: "[RpuFailure!]!"
+  exceptions: "[RpuFailure!]!"
+  stacktraces: "[RpuFailure!]!"
+  fpuExceptions: "[RpuFailure!]!"
+  rpuErrors: "[RpuFailure!]!"
+  markers: "[BaseMarker!]!"
+}
+
+BaseMarker: {
+  shape: class
+  id: BigInt!
+  loggerTime: Duration!
+  time: Datetime!
+  simulationTime: Duration!
+  evaluator: String!
+  criticality: String!
+  component: String!
+  description: String!
+  descriptionAddition: JSON!
+  markerType: String!
+  source: String!
+  positionLat: Float!
+  positionLon: Float!
+  position0Digits: BigInt!
+  position1Digits: BigInt!
+  position2Digits: BigInt!
+  position3Digits: BigInt!
+  position4Digits: BigInt!
+  markerMetadata: "[MarkerMetadataKey!]!"
+  markerMetadataNegative: "[MarkerMetadataKey!]!"
+  analyses: "[Analysis!]!"
+}
+
+Analysis: {
+  shape: class
+  id: BigInt!
+  archived: Boolean!
+  createdDatetime: Datetime!
+  description: String!
+  descriptionDetailed: String!
+  modifiedDatetime: Datetime!
+  status: String!
+  tags: "[AnalysisTag!]!"
+  urls: Dict!
+}
+
+RelatedAnalysis: {
+  shape: class
+  id: BigInt!
+  description: String!
+  descriptionDetailed: String!
+  urls: Dict!
+  status: String!
+  archived: Boolean!
+  createdDatetime: Datetime!
+  modifiedDatetime: Datetime!
+  tags: "[AnalysisTag!]!"
+  relations: "[Dict!]!"
+}
+
+RpuFailure: {
+  shape: class
+  id: ID!
+  content: String!
+  failureType: String!
+  rpuType: String!
+  cleanedRpuFailure: CleanedRpuFailure!
+}
+
+CleanedRpuFailure: {
+  shape: class
+  id: String!
+  content: String!
+  analyses: "[Analysis!]!"
+}
+
+# -------------------------------------------------------------
+# GraphQL Field Relationships
+# -------------------------------------------------------------
+SessionInterval.session -> Session
+RaasJob.sessionInterval -> SessionInterval
+RaasJob.markers -> BaseMarker
+RaasJob.rpuFailures -> RpuFailure
+RaasJob.relatedAnalyses -> RelatedAnalysis
+RaasJob.analyses -> Analysis
+RaasJob.coredumps -> RpuFailure
+RaasJob.exceptions -> RpuFailure
+RaasJob.stacktraces -> RpuFailure
+RaasJob.fpuExceptions -> RpuFailure
+RaasJob.rpuErrors -> RpuFailure
+BaseMarker.analyses -> Analysis
+Session.analyses -> Analysis
+SessionInterval.analyses -> Analysis
+RpuFailure.cleanedRpuFailure -> CleanedRpuFailure
+CleanedRpuFailure.analyses -> Analysis
